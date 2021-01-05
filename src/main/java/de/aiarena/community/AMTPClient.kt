@@ -7,14 +7,32 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.util.*
 import kotlin.collections.HashMap
+import kotlin.system.exitProcess
 
-class AMTPClient(host: String, port: Int, secret: String, private val broadcastCallback: (MessageFromServer) -> Unit): Closeable, Runnable{
+class AMTPClient(host: String, port: Int, secret: String, private val broadcastCallback: (MessageFromServer) -> Unit, private val debug: Boolean = false): Closeable, Runnable{
     private val socket = Socket(host,port)
     private val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
     private val writer = PrintWriter(socket.getOutputStream())
 
     init{
         Thread(this).start()
+
+        send(
+                MessageToServer(
+                        "CLAIM",
+                        "AMTP/0.0",
+                        hashMapOf(
+                                "Secret" to secret,
+                                "Role" to "Whatever"
+                        )
+                )
+        ) { authResp ->
+            if (authResp.code == 301) {
+                println("Authentication failed")
+                this@AMTPClient.close()
+                exitProcess(1)
+            }
+        }
     }
 
     override fun run() {
@@ -24,6 +42,10 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
             try{
                 val line = reader.readLine()
                         ?: break
+
+                if(debug){
+                    println("> $line")
+                }
 
                 if(line == ""){
                     currentMessage?.let{
@@ -75,6 +97,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
             message.headers["Identifier"] = key
             pendingCallbacks[key] = it
         }
+        message.debugLog()
         writer.write(message.toString())
         writer.flush()
     }

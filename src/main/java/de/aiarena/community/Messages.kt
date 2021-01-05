@@ -9,4 +9,10 @@ data class MessageToServer(val cmd: String, val protocolVersion: String, val hea
     override fun toString(): String {
         return "$protocolVersion $cmd\n" + headers.entries.map{it.key+": "+it.value}.joinToString("\n")
     }
+    fun debugLog(){
+        val lines = toString().split("\n")
+        for(line in lines){
+            println("< $line")
+        }
+    }
 }
