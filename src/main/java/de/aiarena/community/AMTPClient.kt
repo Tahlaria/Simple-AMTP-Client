@@ -12,6 +12,9 @@ import kotlin.system.exitProcess
 interface JavaCompatibleBroadcastCallback{
     fun onMessage(msg: MessageFromServer, myTurn: Boolean)
 }
+interface JavaCompatibleMessageCallback{
+    fun onResponse(msg: MessageFromServer)
+}
 
 class AMTPClient(host: String, port: Int, secret: String, private val broadcastCallback: (MessageFromServer,Boolean) -> Unit, private val debug: Boolean = false): Closeable, Runnable{
     constructor(host: String, port: Int, secret: String, jcbc: JavaCompatibleBroadcastCallback, debug: Boolean = false)
@@ -112,6 +115,13 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
 
         println("Warning: Ignored message:")
         println(msg)
+    }
+
+    fun sendJC(message: MessageToServer, callback: JavaCompatibleMessageCallback? = null){
+        when(callback){
+            null -> send(message,null)
+            else -> send(message,callback::onResponse)
+        }
     }
 
     fun send(message: MessageToServer, callback: ((MessageFromServer) -> Unit)? = null){
