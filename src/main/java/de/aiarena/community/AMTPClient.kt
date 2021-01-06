@@ -10,10 +10,10 @@ import kotlin.collections.HashMap
 import kotlin.system.exitProcess
 
 interface JavaCompatibleBroadcastCallback{
-    fun onMessage(msg: MessageFromServer)
+    fun onMessage(msg: MessageFromServer, myTurn: Boolean)
 }
 
-class AMTPClient(host: String, port: Int, secret: String, private val broadcastCallback: (MessageFromServer) -> Unit, private val debug: Boolean = false): Closeable, Runnable{
+class AMTPClient(host: String, port: Int, secret: String, private val broadcastCallback: (MessageFromServer,Boolean) -> Unit, private val debug: Boolean = false): Closeable, Runnable{
     constructor(host: String, port: Int, secret: String, jcbc: JavaCompatibleBroadcastCallback, debug: Boolean = false)
             : this(host, port, secret, jcbc::onMessage,debug)
 
@@ -21,6 +21,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
     private val reader : BufferedReader
     private val writer : PrintWriter
     private val pendingCallbacks : HashMap<String,(MessageFromServer) -> Unit>
+    private var mySlot = -1
 
     init{
         socket = Socket(host,port)
@@ -45,6 +46,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
                 this@AMTPClient.close()
                 exitProcess(1)
             }
+            mySlot = authResp.headers["Slot"]!!.toInt()
         }
     }
 
@@ -85,8 +87,17 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
     }
 
     private fun onMessageCompletion(msg: MessageFromServer){
+        if(msg.code == 9){
+            println("Connection closed by Remote")
+            exitProcess(0)
+        }
         if(msg.code == 1){
-            broadcastCallback(msg)
+            var myActionRequired = true;
+            try {
+                myActionRequired = msg.headers["ActionRequiredBy"]!!.toInt() == mySlot
+            }catch(ex : Exception){}
+
+            broadcastCallback(msg,myActionRequired)
             return
         }
         msg.headers["Identifier"]?.let{
@@ -103,7 +114,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         println(msg)
     }
 
-    private fun send(message: MessageToServer, callback: ((MessageFromServer) -> Unit)? = null){
+    fun send(message: MessageToServer, callback: ((MessageFromServer) -> Unit)? = null){
         val key = UUID.randomUUID().toString()
         callback?.let{
             message.headers["Identifier"] = key
