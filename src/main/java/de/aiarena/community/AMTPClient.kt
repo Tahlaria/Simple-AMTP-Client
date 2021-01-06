@@ -17,11 +17,17 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
     constructor(host: String, port: Int, secret: String, jcbc: JavaCompatibleBroadcastCallback, debug: Boolean = false)
             : this(host, port, secret, jcbc::onMessage,debug)
 
-    private val socket = Socket(host,port)
-    private val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
-    private val writer = PrintWriter(socket.getOutputStream())
+    private val socket : Socket
+    private val reader : BufferedReader
+    private val writer : PrintWriter
+    private val pendingCallbacks : HashMap<String,(MessageFromServer) -> Unit>
 
     init{
+        socket = Socket(host,port)
+        reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+        writer = PrintWriter(socket.getOutputStream())
+        pendingCallbacks = HashMap()
+
         Thread(this).start()
 
         send(
@@ -97,7 +103,6 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         println(msg)
     }
 
-    private val pendingCallbacks = HashMap<String,(MessageFromServer) -> Unit>()
     private fun send(message: MessageToServer, callback: ((MessageFromServer) -> Unit)? = null){
         val key = UUID.randomUUID().toString()
         callback?.let{
