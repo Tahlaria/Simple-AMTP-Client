@@ -9,7 +9,14 @@ import java.util.*
 import kotlin.collections.HashMap
 import kotlin.system.exitProcess
 
+interface JavaCompatibleBroadcastCallback{
+    fun onMessage(msg: MessageFromServer)
+}
+
 class AMTPClient(host: String, port: Int, secret: String, private val broadcastCallback: (MessageFromServer) -> Unit, private val debug: Boolean = false): Closeable, Runnable{
+    constructor(host: String, port: Int, secret: String, jcbc: JavaCompatibleBroadcastCallback, debug: Boolean = false)
+            : this(host, port, secret, jcbc::onMessage,debug)
+
     private val socket = Socket(host,port)
     private val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
     private val writer = PrintWriter(socket.getOutputStream())
