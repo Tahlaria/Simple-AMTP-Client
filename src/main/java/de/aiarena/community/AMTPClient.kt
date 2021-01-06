@@ -73,7 +73,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
                         currentMessage = MessageFromServer(line.toInt())
                     }
                     else -> {
-                        currentMessage.headers[line.substring(0,line.indexOf(":"))] = line.substring(line.indexOf(":")+1,line.length)
+                        currentMessage.headers[line.substring(0,line.indexOf(":"))] = line.substring(line.indexOf(":")+1,line.length).trim()
                     }
                 }
 
@@ -85,7 +85,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
     }
 
     private fun onMessageCompletion(msg: MessageFromServer){
-        if(msg.code == 9){
+        if(msg.code == 1){
             broadcastCallback(msg)
             return
         }
