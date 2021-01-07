@@ -95,7 +95,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
             exitProcess(0)
         }
         if(msg.code == 1){
-            var myActionRequired = true;
+            var myActionRequired = false;
             try {
                 myActionRequired = msg.headers["ActionRequiredBy"]!!.toInt() == mySlot
             }catch(ex : Exception){}
