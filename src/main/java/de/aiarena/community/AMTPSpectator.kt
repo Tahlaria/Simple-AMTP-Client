@@ -9,7 +9,7 @@ import java.util.*
 import kotlin.collections.HashMap
 import kotlin.system.exitProcess
 
-class AMTPClient(host: String, port: Int, secret: String, private val broadcastCallback: (MessageFromServer,Boolean) -> Unit, private val debug: Boolean = false): Closeable, Runnable{
+class AMTPSpectator(host: String, port: Int, gameId: String, private val broadcastCallback: (MessageFromServer,Boolean) -> Unit, private val debug: Boolean = false): Closeable, Runnable{
     constructor(host: String, port: Int, secret: String, jcbc: JavaCompatibleBroadcastCallback, debug: Boolean = false)
             : this(host, port, secret, jcbc::onMessage,debug)
 
@@ -28,18 +28,18 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         Thread(this).start()
 
         send(
-                MessageToServer(
-                        "CLAIM",
-                        "AMTP/0.0",
-                        hashMapOf(
-                                "Secret" to secret,
-                                "Role" to "Player"
-                        )
+            MessageToServer(
+                "CLAIM",
+                "AMTP/0.0",
+                hashMapOf(
+                    "Role" to "Spectator",
+                    "Game" to gameId
                 )
+            )
         ) { authResp ->
             if (authResp.code == 301) {
                 println("Authentication failed")
-                this@AMTPClient.close()
+                this@AMTPSpectator.close()
                 exitProcess(1)
             }
             mySlot = authResp.headers["Slot"]!!.toInt()
@@ -52,7 +52,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         while(true){
             try{
                 val line = reader.readLine()
-                        ?: break
+                    ?: break
 
                 if(debug){
                     println("> $line")
@@ -97,27 +97,20 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
             return
         }
         msg.headers["Identifier"]?.let{
-            id ->
+                id ->
             pendingCallbacks[id]
-                    ?.let{
+                ?.let{
                         cb -> cb(msg)
-                        pendingCallbacks.remove(id)
-                        return
-                    }
+                    pendingCallbacks.remove(id)
+                    return
+                }
         }
 
         println("Warning: Ignored message:")
         println(msg)
     }
 
-    fun sendJC(message: MessageToServer, callback: JavaCompatibleMessageCallback? = null){
-        when(callback){
-            null -> send(message,null)
-            else -> send(message,callback::onResponse)
-        }
-    }
-
-    fun send(message: MessageToServer, callback: ((MessageFromServer) -> Unit)? = null){
+    private fun send(message: MessageToServer, callback: ((MessageFromServer) -> Unit)? = null){
         val key = UUID.randomUUID().toString()
         callback?.let{
             message.headers["Identifier"] = key
