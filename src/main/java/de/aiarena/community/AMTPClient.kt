@@ -28,14 +28,14 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         Thread(this).start()
 
         send(
-                MessageToServer(
-                        "CLAIM",
-                        "AMTP/0.0",
-                        hashMapOf(
-                                "Secret" to secret,
-                                "Role" to "Player"
-                        )
+            MessageToServer(
+                "CLAIM",
+                "AMTP/0.0",
+                hashMapOf(
+                    "Secret" to secret,
+                    "Role" to "Player"
                 )
+            )
         ) { authResp ->
             if (authResp.code == 301) {
                 println("Authentication failed")
@@ -52,7 +52,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         while(true){
             try{
                 val line = reader.readLine()
-                        ?: break
+                    ?: break
 
                 if(debug){
                     println("> $line")
@@ -90,20 +90,20 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         if(msg.code == 1){
             var myActionRequired = false;
             try {
-                myActionRequired = msg.headers["ActionRequiredBy"]!!.toInt() == mySlot
+                myActionRequired = (msg.headers["ActionRequiredBy"] == "*" ) || ( msg.headers["ActionRequiredBy"]!!.toInt() == mySlot)
             }catch(ex : Exception){}
 
             broadcastCallback(msg,myActionRequired)
             return
         }
         msg.headers["Identifier"]?.let{
-            id ->
+                id ->
             pendingCallbacks[id]
-                    ?.let{
+                ?.let{
                         cb -> cb(msg)
-                        pendingCallbacks.remove(id)
-                        return
-                    }
+                    pendingCallbacks.remove(id)
+                    return
+                }
         }
 
         println("Warning: Ignored message:")
@@ -123,7 +123,9 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
             message.headers["Identifier"] = key
             pendingCallbacks[key] = it
         }
-        message.debugLog()
+        if(debug) {
+            message.debugLog()
+        }
         writer.write(message.toString())
         writer.flush()
     }
