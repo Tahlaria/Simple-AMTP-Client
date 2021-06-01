@@ -36,14 +36,7 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
                     "Role" to "Player"
                 )
             )
-        ) { authResp ->
-            if (authResp.code == 301) {
-                println("Authentication failed")
-                this@AMTPClient.close()
-                exitProcess(1)
-            }
-            mySlot = authResp.headers["Slot"]!!.toInt()
-        }
+        )
     }
 
     override fun run() {
@@ -86,6 +79,10 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         if(msg.code == 9){
             println("Connection closed by Remote")
             exitProcess(0)
+        }
+        if(msg.code == 5){
+            mySlot = msg.headers["Slot"]!!.toInt()
+            return
         }
         if(msg.code == 1){
             var myActionRequired = false;
