@@ -114,6 +114,10 @@ class AMTPClient(host: String, port: Int, secret: String, private val broadcastC
         }
     }
 
+    fun getMySlot() : Int{
+        return mySlot
+    }
+
     fun send(message: MessageToServer, callback: ((MessageFromServer) -> Unit)? = null){
         val key = UUID.randomUUID().toString()
         callback?.let{
